@@ -1,5 +1,4 @@
 (sym_lib_table
   (lib (name fan-rescue)(type Legacy)(uri ${KIPRJMOD}/fan-rescue.lib)(options "")(descr ""))
   (lib (name diode)(type Legacy)(uri ../kbd/library/diode.lib)(options "")(descr ""))
-  (lib (name bluepill_breakouts)(type Legacy)(uri C:/msys64/home/xcd0/fan/fan/library/bluepill_breakouts.lib)(options "")(descr ""))
 )

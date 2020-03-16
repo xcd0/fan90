@@ -1,5 +1,0 @@
-(fp_lib_table
-  (lib (name library)(type KiCad)(uri ./library.pretty)(options "")(descr ""))
-  (lib (name kbd)(type KiCad)(uri ../kbd/kbd.pretty)(options "")(descr ""))
-  (lib (name library_)(type KiCad)(uri ../library)(options "")(descr ""))
-)

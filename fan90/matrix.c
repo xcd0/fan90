@@ -8,30 +8,41 @@
 // | 10  | D7/        | SCL            | o   |
 // | 11  | D8/        | RCK            | o   |
 // | 12  | D9/        | OE             | o   |
-
+//
 
 int row_pins[] = { F6,F7,B1,B3,B2,B6 };
-void SR_SER_HIGH(){ writePinHigh(D5); }                // D5 SER
-void SR_SER_LOW(){ writePinLow(D5); }                  // D6 CLR
-void SR_CLEAR(){ writePinLow(D6); writePinHigh(D6); }  // D6 CLR
-void SR_CLOCK(){ writePinHigh(D7); writePinLow(D7); }  // D7 CLK
-void SR_RCLOCK(){ writePinHigh(D8); writePinLow(D8); } // D8 RCK
-void SR_OE_OUTPUT_DISABLE(){ writePinHigh(D9); }     // D9 OE
-void SR_OE_OUTPOT_ENABLE(){ writePinLow(D9); }     // D9 OE
+static bool readRowPin(int rowNum ){ return readPin(row_pins[rowNum]); }
 
-void SR_SCAN( int colNum ){
+static void GPIO_DELAY(){
+	// GPIOでシフトレジスタを制御する際に各信号間で遅延を入れたい場合ここに入れる
+	//delayMicroseconds( 10 ); // <- 使えるか知らない
+}
+
+static void SR_SER_HIGH(){ writePinHigh(D5); GPIO_DELAY(); }                // D5 SER
+static void SR_SER_LOW(){ writePinLow(D5); GPIO_DELAY(); }                  // D6 CLR
+static void SR_CLEAR(){ writePinLow(D6); GPIO_DELAY(); writePinHigh(D6); GPIO_DELAY();}  // D6 CLR
+static void SR_CLOCK(){ writePinLow(D7); GPIO_DELAY(); writePinHigh(D7); GPIO_DELAY();}  // D7 CLK
+static void SR_RCLOCK(){ writePinLow(D8); GPIO_DELAY(); writePinHigh(D8); GPIO_DELAY();} // D8 RCK
+static void SR_OE_OUTPUT_DISABLE(){ writePinHigh(D9); GPIO_DELAY(); }     // D9 OE
+static void SR_OE_OUTPOT_ENABLE(){ writePinLow(D9); GPIO_DELAY(); }     // D9 OE
+
+static void SR_SCAN_COL_SET( int colNum ){
 	SR_CLEAR(); // クリア
-	int col[MATRIX_COLS ] = {0};
+	bool col[ MATRIX_COLS ] = { false };
 	col[colNum] = 1;
 	int i = 0;
 	for(; i < MATRIX_COLS; i++ ){
-		if( col[i] == 0 ) SR_SER_LOW();
-		if( col[i] == 1 ) SR_SER_HIGH();
+		if( col[i] ){
+			SR_SER_HIGH();
+		} else {
+			SR_SER_LOW();
+		}
 		SR_CLOCK();
 	}
+	SR_RCLOCK(); // ピンに出力
 }
 
-void matrix_init_custom(void) {
+static void matrix_init_custom(void) { // {{{
 	// TODO: initialize hardware here
 
 	// initialize matrix state: all keys off
@@ -43,7 +54,7 @@ void matrix_init_custom(void) {
 	debounce_init(MATRIX_ROWS);
 
 	matrix_init_quantum();
-	
+
 	//setPinInputHigh(pin); // Set pin as input with builtin pull-up resistor
 	//setPinOutput(pin); // Set pin as output
 	//writePinHigh(pin); // Set pin level as high, assuming it is an output
@@ -62,18 +73,15 @@ void matrix_init_custom(void) {
 
 	// シフトレジスタの設定
 	SR_CLEAR();
+	SR_OE_OUTPUT_ENABLE(); // 内部で出力を接続する (出力をハイインピーダンス状態にしない)
 	writePinHigh(D8); // RCLK
-	
-	
+
+
 	//writePinHigh(pin); // Set pin level as high, assuming it is an output
 	//writePinLow(pin); // Set pin level as low, assuming it is an output
-}
+} // }}}
+
 static void read_row( matrix_row_t current_matrix[], uint8_t current_row) {
-    // Store last value of row prior to reading
-    matrix_row_t last_row_value = current_matrix[current_row];
-changed |= read_cols_on_row(raw_matrix, current_row);
-
-
 }
 
 bool matrix_scan_custom(matrix_row_t current_matrix[]) {
@@ -85,53 +93,67 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
 	//writePinLow(pin); // Set pin level as low, assuming it is an output
 	//readPin(pin); // Returns the level of the pin
 
+	bool last_row_value = current_matrix;
+
+	for (uint8_t c = 0; c < MATRIX_COLS; c++) {
+		SR_SCAN_COL_SET(c); // シフトレジスタでc列だけHIGHにする
+		for( int r = 0; r < MATRIX_ROWS; r++ ){
+			matrix_row_t last_row_value = current_matrix[r];
+			current_matrix[c] = readPin(r);
+			matrix_has_changed |= (last_row_value != current_matrix[current_row]);
+		}
+		raw_matrix[i] = 0;
+		matrix[i]     = 0;
+	}
+	SR_CLEAR();
+
 	return matrix_has_changed;
 }
 
 static bool read_cols_on_row(matrix_row_t current_matrix[], uint8_t current_row) {
-    matrix_row_t last_row_value = current_matrix[current_row];
-    current_matrix[current_row] = 0;
+	matrix_row_t last_row_value = current_matrix[current_row];
+	current_matrix[current_row] = 0;
 
-    for (uint8_t col_index = 0; col_index < MATRIX_COLS; col_index++) {
-        pin_t pin = direct_pins[current_row][col_index];
-        if (pin != NO_PIN) {
-            current_matrix[current_row] |= readPin(pin) ? 0 : (MATRIX_ROW_SHIFTER << col_index);
-        }
-    }
+	for (uint8_t col_index = 0; col_index < MATRIX_COLS; col_index++) {
+		pin_t pin = direct_pins[current_row][col_index];
+		if (pin != NO_PIN) {
+			current_matrix[current_row] |= readPin(pin) ? 0 : (MATRIX_ROW_SHIFTER << col_index);
+		}
+	}
 
-    return (last_row_value != current_matrix[current_row]);
+	return (last_row_value != current_matrix[current_row]);
 }
 static bool read_rows_on_col(matrix_row_t current_matrix[], uint8_t current_col) {
-    bool matrix_changed = false;
+	bool matrix_changed = false;
 
-    // Select col and wait for col selecton to stabilize
-    select_col(current_col);
-    matrix_io_delay();
+	// Select col and wait for col selecton to stabilize
+	select_col(current_col);
+	matrix_io_delay();
 
-    // For each row...
-    for (uint8_t row_index = 0; row_index < ROWS_PER_HAND; row_index++) {
-        // Store last value of row prior to reading
-        matrix_row_t last_row_value = current_matrix[row_index];
+	// For each row...
+	for (uint8_t row_index = 0; row_index < ROWS_PER_HAND; row_index++) {
+		// Store last value of row prior to reading
+		matrix_row_t last_row_value = current_matrix[row_index];
 
-        // Check row pin state
-        if (readPin(row_pins[row_index]) == 0) {
-            // Pin LO, set col bit
-            current_matrix[row_index] |= (MATRIX_ROW_SHIFTER << current_col);
-        } else {
-            // Pin HI, clear col bit
-            current_matrix[row_index] &= ~(MATRIX_ROW_SHIFTER << current_col);
-        }
+		// Check row pin state
+		if (readPin(row_pins[row_index]) == 0) {
+			// Pin LO, set col bit
+			current_matrix[row_index] |= (MATRIX_ROW_SHIFTER << current_col);
+		} else {
+			// Pin HI, clear col bit
+			current_matrix[row_index] &= ~(MATRIX_ROW_SHIFTER << current_col);
+		}
 
-        // Determine if the matrix changed state
-        if ((last_row_value != current_matrix[row_index]) && !(matrix_changed)) {
-            matrix_changed = true;
-        }
-    }
+		// Determine if the matrix changed state
+		if ((last_row_value != current_matrix[row_index]) && !(matrix_changed)) {
+			matrix_changed = true;
+		}
+	}
 
-    // Unselect col
-    unselect_col(current_col);
+	// Unselect col
+	unselect_col(current_col);
 
-    return matrix_changed;
+	return matrix_changed;
 }
 
 /*
@@ -171,36 +193,36 @@ static bool read_rows_on_col(matrix_row_t current_matrix[], uint8_t current_col)
 /*
  *https://docs.qmk.fm/#/custom_matrix
 
-matrix_row_t matrix_get_row(uint8_t row) {
-    // TODO: return the requested row data
+ matrix_row_t matrix_get_row(uint8_t row) {
+// TODO: return the requested row data
 }
 
 void matrix_print(void) {
-    // TODO: use print() to dump the current matrix state to console
+// TODO: use print() to dump the current matrix state to console
 }
 
 void matrix_init(void) {
-    // TODO: initialize hardware and global matrix state here
+// TODO: initialize hardware and global matrix state here
 
-    // Unless hardware debouncing - Init the configured debounce routine
-    debounce_init(MATRIX_ROWS);
+// Unless hardware debouncing - Init the configured debounce routine
+debounce_init(MATRIX_ROWS);
 
-    // This *must* be called for correct keyboard behavior
-    matrix_init_quantum();
+// This *must* be called for correct keyboard behavior
+matrix_init_quantum();
 }
 
 uint8_t matrix_scan(void) {
-    bool matrix_has_changed = false;
+bool matrix_has_changed = false;
 
-    // TODO: add matrix scanning routine here
+// TODO: add matrix scanning routine here
 
-    // Unless hardware debouncing - use the configured debounce routine
-    debounce(raw_matrix, matrix, MATRIX_ROWS, changed);
+// Unless hardware debouncing - use the configured debounce routine
+debounce(raw_matrix, matrix, MATRIX_ROWS, changed);
 
-    // This *must* be called for correct keyboard behavior
-    matrix_scan_quantum();
+// This *must* be called for correct keyboard behavior
+matrix_scan_quantum();
 
-    return matrix_has_changed;
+return matrix_has_changed;
 }
 
 また、次のコールバックのデフォルトも提供します。
@@ -251,19 +273,19 @@ inline uint8_t matrix_cols(void) { return MATRIX_COLS; }
 inline bool matrix_is_on(uint8_t row, uint8_t col) { return (matrix[row] & ((matrix_row_t)1 << col)); }
 
 inline matrix_row_t matrix_get_row(uint8_t row) {
-    // Matrix mask lets you disable switches in the returned matrix data. For example, if you have a
-    // switch blocker installed and the switch is always pressed.
+	// Matrix mask lets you disable switches in the returned matrix data. For example, if you have a
+	// switch blocker installed and the switch is always pressed.
 #ifdef MATRIX_MASKED
-    return matrix[row] & matrix_mask[row];
+	return matrix[row] & matrix_mask[row];
 #else
-    return matrix[row];
+	return matrix[row];
 #endif
 }
 
 // Deprecated.
 bool matrix_is_modified(void) {
-    if (debounce_active()) return false;
-    return true;
+	if (debounce_active()) return false;
+	return true;
 }
 
 #if (MATRIX_COLS <= 8)
@@ -281,22 +303,22 @@ bool matrix_is_modified(void) {
 #endif
 
 void matrix_print(void) {
-    print_matrix_header();
+	print_matrix_header();
 
-    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
-        phex(row);
-        print(": ");
-        print_matrix_row(row);
-        print("\n");
-    }
+	for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+		phex(row);
+		print(": ");
+		print_matrix_row(row);
+		print("\n");
+	}
 }
 
 uint8_t matrix_key_count(void) {
-    uint8_t count = 0;
-    for (uint8_t i = 0; i < MATRIX_ROWS; i++) {
-        count += matrix_bitpop(i);
-    }
-    return count;
+	uint8_t count = 0;
+	for (uint8_t i = 0; i < MATRIX_ROWS; i++) {
+		count += matrix_bitpop(i);
+	}
+	return count;
 }
 
 __attribute__((weak)) void matrix_io_delay(void) { wait_us(MATRIX_IO_DELAY); }
@@ -307,24 +329,24 @@ __attribute__((weak)) void matrix_init_custom(void) {}
 __attribute__((weak)) bool matrix_scan_custom(matrix_row_t current_matrix[]) { return true; }
 
 __attribute__((weak)) void matrix_init(void) {
-    matrix_init_custom();
+	matrix_init_custom();
 
-    // initialize matrix state: all keys off
-    for (uint8_t i = 0; i < MATRIX_ROWS; i++) {
-        raw_matrix[i] = 0;
-        matrix[i]     = 0;
-    }
+	// initialize matrix state: all keys off
+	for (uint8_t i = 0; i < MATRIX_ROWS; i++) {
+		raw_matrix[i] = 0;
+		matrix[i]     = 0;
+	}
 
-    debounce_init(MATRIX_ROWS);
+	debounce_init(MATRIX_ROWS);
 
-    matrix_init_quantum();
+	matrix_init_quantum();
 }
 
 __attribute__((weak)) uint8_t matrix_scan(void) {
-    bool changed = matrix_scan_custom(raw_matrix);
+	bool changed = matrix_scan_custom(raw_matrix);
 
-    debounce(raw_matrix, matrix, MATRIX_ROWS, changed);
+	debounce(raw_matrix, matrix, MATRIX_ROWS, changed);
 
-    matrix_scan_quantum();
-    return changed;
+	matrix_scan_quantum();
+	return changed;
 }

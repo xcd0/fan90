@@ -2,10 +2,34 @@
 // https://docs.qmk.fm/#/custom_matrix
 // https://github.com/qmk/qmk_firmware/blob/ece14278efe5168ef20298984bff4b1d5eb43e4b/quantum/matrix_common.c#L108
 // https://synapse.kyoto/glossary/74hc595/page001.html
+//
+// | 8   | D5/        | SER            | o   |
+// | 9   | D6/        | SCK            | o   |
+// | 10  | D7/        | SCL            | o   |
+// | 11  | D8/        | RCK            | o   |
+// | 12  | D9/        | OE             | o   |
+
+
 int row_pins[] = { F6,F7,B1,B3,B2,B6 };
-void SR_CLEAR(){ writePinLow(D6); writePinHigh(D6); }
-void SR_CLOCK(){ writePinHigh(D7); writePinLow(D7); }
-void SR_RCLOCK(){ writePinHigh(D8); writePinLow(D8); }
+void SR_SER_HIGH(){ writePinHigh(D5); }                // D5 SER
+void SR_SER_LOW(){ writePinLow(D5); }                  // D6 CLR
+void SR_CLEAR(){ writePinLow(D6); writePinHigh(D6); }  // D6 CLR
+void SR_CLOCK(){ writePinHigh(D7); writePinLow(D7); }  // D7 CLK
+void SR_RCLOCK(){ writePinHigh(D8); writePinLow(D8); } // D8 RCK
+void SR_OE_OUTPUT_DISABLE(){ writePinHigh(D9); }     // D9 OE
+void SR_OE_OUTPOT_ENABLE(){ writePinLow(D9); }     // D9 OE
+
+void SR_SCAN( int colNum ){
+	SR_CLEAR(); // クリア
+	int col[MATRIX_COLS ] = {0};
+	col[colNum] = 1;
+	int i = 0;
+	for(; i < MATRIX_COLS; i++ ){
+		if( col[i] == 0 ) SR_SER_LOW();
+		if( col[i] == 1 ) SR_SER_HIGH();
+		SR_CLOCK();
+	}
+}
 
 void matrix_init_custom(void) {
 	// TODO: initialize hardware here

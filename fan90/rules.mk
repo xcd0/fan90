@@ -19,7 +19,7 @@ BOOTLOADER = atmel-dfu
 #   Atmel DFU loader    4096
 #   LUFA bootloader     4096
 #   USBaspLoader        2048
-# OPT_DEFS += -DBOOTLOADER_SIZE=4096
+OPT_DEFS += -DBOOTLOADER_SIZE=4096
 
 # Build Options
 #   change yes to no to disable
@@ -32,7 +32,7 @@ COMMAND_ENABLE = yes        # Commands for debug and configuration
 # Do not enable SLEEP_LED_ENABLE. it uses the same timer as BACKLIGHT_ENABLE
 SLEEP_LED_ENABLE = no       # Breathing sleep LED during USB suspend
 # if this doesn't work, see here: https://github.com/tmk/tmk_keyboard/wiki/FAQ#nkro-doesnt-work
-NKRO_ENABLE = no            # USB Nkey Rollover
+NKRO_ENABLE = yes           # USB Nkey Rollover
 BACKLIGHT_ENABLE = no       # Enable keyboard backlight functionality
 RGBLIGHT_ENABLE = no        # Enable keyboard RGB underglow
 MIDI_ENABLE = no            # MIDI support
@@ -42,8 +42,8 @@ FAUXCLICKY_ENABLE = no      # Use buzzer to emulate clicky switches
 HD44780_ENABLE = no         # Enable support for HD44780 based LCDs
 
 SRC += matrix.c             # matrix.cを自分で実装する
-CUSTOM_MATRIX = lite        # カスタムマトリックスを使う
-CUSTOM_MATRIX = yes         # スキャンルーチンをさらに制御する必要がある場合は、完全なスキャンルーチンを実装することを選択できます。設定するには、これをrules.mkに追加します。
+CUSTOM_MATRIX = lite        # カスタムマトリックスを使う ちょこっとだけ実装する
+#CUSTOM_MATRIX = yes         # スキャンルーチンをさらに制御する必要がある場合は、完全なスキャンルーチンを実装することを選択できます。設定するには、これをrules.mkに追加します。
 
 
 

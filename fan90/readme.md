@@ -1,35 +1,21 @@
 # fan90
 
-
 * Pro Micro
 
-| ピン | 名前       | 説明           | io  |
-| ---  | ---        | ---            | --- |
-| 1    | TX0/D3     | -              | -   |
-| 2    | RX1/D2     | -              | -   |
-| 3    | GND        | GND            | -   |
-| 4    | GND        | GND            | -   |
-| 5    | D2/        | -              | -   |
-| 6    | D3/        | -              | -   |
-| 7    | D4/        | software reset | i   |
-| 8    | D5/        | SER            | o   |
-| 9    | D6/        | SCK            | o   |
-| 10   | D7/        | SCL            | o   |
-| 11   | D8/        | RCK            | o   |
-| 12   | D9/        | OE             | o   |
-| 13   | B6/10/D10  | row05          | i   |
-| 14   | B2/16/MOSI | row04          | i   |
-| 15   | B3/14/MISO | row03          | i   |
-| 16   | B1/15/SCK  | row02          | i   |
-| 17   | F7/A0      | row01          | i   |
-| 18   | F6/A1      | row00          | i   |
-| 19   | F5/A2      | -              | -   |
-| 20   | F4/A3      | -              | -   |
-| 21   | VCC        | VCC            | -   |
-| 22   | RESET      | hardware reset | i   |
-| 23   | GND        | GND            | -   |
-| 24   | VCC        | -              | -   |
-
+  | pin | name    | use            | io  |     | pin | name  | use            | io  |
+  | --- | ---     | ---            | --- | --- | --- | ---   | ---            | --- |
+  | 1   | TX0/PD3 | -              | -   |     | 24  | VCC   | -              | -   |
+  | 2   | RX1/PD2 | -              | -   |     | 23  | GND   | GND            | -   |
+  | 3   | GND     | GND            | -   |     | 22  | RESET | hardware reset | i   |
+  | 4   | GND     | GND            | -   |     | 21  | VCC   | VCC            | -   |
+  | 5   | PD1     | -              | -   |     | 20  | PF4   | -              | -   |
+  | 6   | PD0     | -              | -   |     | 19  | PF5   | -              | -   |
+  | 7   | PD4     | software reset | i   |     | 18  | PF6   | row00          | i   |
+  | 8   | PC6     | SER            | o   |     | 17  | PF7   | row01          | i   |
+  | 9   | PD7     | SCK            | o   |     | 16  | PB1   | row02          | i   |
+  | 10  | PE6     | SCL            | o   |     | 15  | PB3   | row03          | i   |
+  | 11  | PB4     | RCK            | o   |     | 14  | PB2   | row04          | i   |
+  | 12  | PB5     | OE             | o   |     | 13  | PB6   | row05          | i   |
 
 * SN74HC595N
 
@@ -45,18 +31,3 @@
 | 15,1〜7 | QA、QB〜QH | 出力   | パラレル出力                                 |
 | 9       | QH’        | 出力   | シフトレジスタの最上位ビットの状態を常に出力 |
 
-##
-
-![fan90](imgur.com image replace me!)
-
-A short description of the keyboard/project
-
-* Keyboard Maintainer: [xcd0](https://github.com/yourusername)
-* Hardware Supported: The PCBs, controllers supported
-* Hardware Availability: Links to where you can find this hardware
-
-Make example for this keyboard (after setting up your build environment):
-
-    make fan90:default
-
-See the [build environment setup](https://docs.qmk.fm/#/getting_started_build_tools) and the [make instructions](https://docs.qmk.fm/#/getting_started_make_guide) for more information. Brand new to QMK? Start with our [Complete Newbs Guide](https://docs.qmk.fm/#/newbs).

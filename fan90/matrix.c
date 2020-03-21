@@ -93,10 +93,12 @@ void matrix_init_custom(void) { // {{{
 
 bool matrix_scan_custom(matrix_row_t current_matrix_row[]) {
 	bool matrix_has_changed = false;
+	matrix_io_delay();
 	// TODO: add matrix scanning routine here
 	//
 	// matrix_row_t型は一列にある行の最大数が収まる8bit、16bit、32bitのunsigned int型っぽい
 	// どうもデータ形式がmatrix_row_t型の配列になっているっぽい
+	// おそらくmatrix_row_tの下位ビットが0列に相当するっぽい
 	//
 	// * 列を設定してから行を読み取る
 	// * 1行が1つの整数型に収まる感じでn列目はmatrix_row_t型の (n - MATRIX_COLS) bit目になる
@@ -106,11 +108,18 @@ bool matrix_scan_custom(matrix_row_t current_matrix_row[]) {
 		for( uint8_t r = 0; r < MATRIX_ROWS; r++ ){          // c列のr行目を読み取る
 			matrix_row_t last_row_value = current_matrix_row[r]; // 直前のc列r行目の状態を保存
 			//current_matrix_row[r] |= readRowPin(r) ? 0 : (MATRIX_ROW_SHIFTER << c); // 負論理
-			current_matrix_row[r] |= readRowPin(r) ? (MATRIX_ROW_SHIFTER << c) : 0; // 正論理
+			//current_matrix_row[r] |= readRowPin(r) ? (MATRIX_ROW_SHIFTER << c) : 0; // 正論理
+			if( readRowPin(r) ){
+				current_matrix_row[r] |= (MATRIX_ROW_SHIFTER << c);
+			}else{
+				uint16_t tmp = (MATRIX_ROW_SHIFTER << c);
+				current_matrix_row[r] &= ~tmp; // 正論理
+			}
 			matrix_has_changed |= (last_row_value != current_matrix_row[r]);
 		}
 		//GPIO_DELAY();
 	}
+
 	return matrix_has_changed;
 }
 

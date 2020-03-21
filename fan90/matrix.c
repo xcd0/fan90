@@ -26,11 +26,21 @@
 // https://synapse.kyoto/glossary/74hc595/page001.html
 
 
-static int row_pins[] = { F6,F7,B1,B3,B2,B6 };
-static bool readRowPin(int rowNum ){ return readPin(row_pins[rowNum]); }
+//static int row_pins[] = { F6,F7,B1,B3,B2,B6 };
+static bool readRowPin(int pin){
+	switch(pin){
+		case 0: return readPin(F6);
+		case 1: return readPin(F7);
+		case 2: return readPin(B1);
+		case 3: return readPin(B3);
+		case 4: return readPin(B2);
+		case 5: return readPin(B6);
+	}
+	return false;
+}
 static void GPIO_DELAY(void){
-	// GPIOでシフトレジスタを制御する際に各信号間で遅延を入れたい場合ここに入れる // delayMicroseconds( 10 ); // <- 使えるか知らない
-	_delay_us(10);
+	// GPIOでシフトレジスタを制御する際に各信号間で遅延を入れたい場合ここに入れる
+	_delay_us(1);
 }
 
 static void SR_SER_HIGH(void){ writePinHigh(C6); GPIO_DELAY(); }                // C6 SER
@@ -38,27 +48,40 @@ static void SR_SER_LOW(void){ writePinLow(C6); GPIO_DELAY(); }                  
 static void SR_CLEAR(void){ writePinLow(E6); GPIO_DELAY(); writePinHigh(E6); GPIO_DELAY();}  // E6 CLR
 static void SR_CLOCK(void){ writePinLow(D7); GPIO_DELAY(); writePinHigh(D7); GPIO_DELAY();}  // D7 CLK
 static void SR_RCLOCK(void){ writePinLow(B4); GPIO_DELAY(); writePinHigh(B4); GPIO_DELAY();} // B4 RCK
-//static void SR_OE_OUTPUT_DISABLE(){ writePinHigh(D9); GPIO_DELAY(); }     // D9 OE
-//static void SR_OE_OUTPOT_ENABLE(){ writePinLow(D9); GPIO_DELAY(); }     // D9 OE
+static void SR_OE_OUTPOT_ENABLE(void){ writePinLow(B5); GPIO_DELAY(); }     // B5 OE
+//static void SR_OE_OUTPUT_DISABLE(void){ writePinHigh(B5); GPIO_DELAY(); }     // B5 OE
 
-static void SR_SCAN_COL_SET( int colNum ){
-	SR_CLEAR(); // クリア
-	bool col[ MATRIX_COLS ] = { false };
-	col[ colNum ] = true;
+static void SR_SET_SCAN_COL( int colNum ){
+	//SR_CLEAR(); // クリア
+	// 負論理にしたかったけど回路のダイオードの向きが逆なので仕方かなく正論理 _(:3 」∠ )_
+
+//	uint16_t col = (1 << colNum); // colNumが2なら 0b0000 0000 0000 0100
+//	for( uint16_t i = 0; i < MATRIX_COLS; i++ ){
+//		if( col & 0b0100000000000000 ){ SR_SER_HIGH(); }
+//		else { SR_SER_LOW(); }
+//		col <<= 1;
+//		SR_CLOCK();
+//	}
+
+	uint16_t col = 1 << (MATRIX_COLS - colNum -1); // colNumが1なら 0b0100 0000 0000 0000 colNumが2なら 0b0010 0000 0000 0000
 	for( uint16_t i = 0; i < MATRIX_COLS; i++ ){
-		if( col[i] ){
-			SR_SER_HIGH();
-		} else {
-			SR_SER_LOW();
-		}
+		if( col & 0b000000000001 ){ SR_SER_HIGH(); }
+		else { SR_SER_LOW(); }
+		col >>= 1;
 		SR_CLOCK();
 	}
+	/* // ↑ は動きとしては ↓ と一緒のはず
+	bool col[ MATRIX_COLS ] = { false }; col[ colNum ] = true;
+	for( uint16_t i = MATRIX_COLS-1; i >= 0; i-- ){
+		if( col[i] ){ SR_SER_HIGH(); }
+		else { SR_SER_LOW(); }
+		SR_CLOCK();
+	} */
 	SR_RCLOCK(); // ピンに出力
 }
 
 void matrix_init_custom(void) { // {{{
 	// TODO: initialize hardware here
-
 	//setPinInputHigh(pin); // Set pin as input with builtin pull-up resistor
 	//setPinOutput(pin); // Set pin as output
 	//writePinHigh(pin); // Set pin level as high, assuming it is an output
@@ -66,36 +89,37 @@ void matrix_init_custom(void) { // {{{
 	//readPin(pin); // Returns the level of the pin
 
 	// シフトレジスタの設定
-	// ピンの入出力設定
-	setPinInputHigh(D4);
-	setPinInputHigh(F6);
-	setPinInputHigh(F7);
-	setPinInputHigh(B1);
-	setPinInputHigh(B3);
-	setPinInputHigh(B2);
-	setPinInputHigh(B6);
-	setPinOutput(C6);
-	setPinOutput(D7);
-	setPinOutput(E6);
-	setPinOutput(B4);
-	setPinOutput(B5);
-	SR_CLEAR();
-	SR_RCLOCK();
+	setPinInput(D4);
+	setPinInput(F6);
+	setPinInput(F7);
+	setPinInput(B1);
+	setPinInput(B3);
+	setPinInput(B2);
+	setPinInput(B6);
+	setPinOutput(C6); setPinOutput(D7); setPinOutput(E6); setPinOutput(B4); setPinOutput(B5);
+	SR_CLEAR(); SR_RCLOCK();
+	SR_OE_OUTPOT_ENABLE();
 } // }}}
 
-bool matrix_scan_custom(matrix_row_t current_matrix[]) {
+bool matrix_scan_custom(matrix_row_t current_matrix_row[]) {
 	bool matrix_has_changed = false;
 	// TODO: add matrix scanning routine here
-
+	// どうもデータ形式がmatrix_row_t型の配列になっており、
+	// matrix_row_t型は一列にある行の最大数が収まる8bit、16bit、32bitのunsigned int型
+	// つまり1行が1つの整数型に収まる感じでn列目はmatrix_row_t型の (n - MATRIX_COLS) bit目になる
+	// fan90ではシフトレジスタを使っており、キースキャンを独自に実装する必要がある
+	// 列を設定してから行を読み取る
 	for (uint16_t c = 0; c < MATRIX_COLS; c++) {
-		SR_SCAN_COL_SET(c); // シフトレジスタでc列だけHIGHにする
-		for( uint8_t r = 0; r < MATRIX_ROWS; r++ ){
-			matrix_row_t last_row_value = current_matrix[r];
-			current_matrix[c] = readRowPin(r) ? 0 : (MATRIX_ROW_SHIFTER << c);
-			matrix_has_changed |= (last_row_value != current_matrix[c]);
+		current_matrix_row[c] = 0;                           // クリア
+		SR_SET_SCAN_COL(c);                                  // シフトレジスタでc列だけHIGHにする 正論理
+		for( uint8_t r = 0; r < MATRIX_ROWS; r++ ){          // 0行目から順に読み取る
+			matrix_row_t last_row_value = current_matrix_row[c]; // 直前のc列r行目の状態を保存
+			//current_matrix_row[r] |= readRowPin(r) ? 0 : (MATRIX_ROW_SHIFTER << c); // 負論理
+			current_matrix_row[c] |= readRowPin(r) ? (MATRIX_ROW_SHIFTER << c) : 0; // 正論理
+			matrix_has_changed |= (last_row_value != current_matrix_row[c]);
 		}
+		//GPIO_DELAY();
 	}
-
 	return matrix_has_changed;
 }
 

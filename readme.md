@@ -8,7 +8,7 @@
 初めての自作キーボードなので楽しみなのと不安なのが混在しています\_(:3 」∠ )\_
 あくまで初めてつくる自作キーボードであるため、当然ながら動かない可能性が高いです。
 
-![](./pcb/fan.png)
+![](./pcb/fan.jpg) ![](./pcb/fan.png)
 <details>
 <summary>開発経緯</summary>
 
@@ -85,6 +85,10 @@
 
 </details>
 
+
+<details>
+<summary>設計</summary>
+
 ## PCB設計
 
 kicadを使って設計した。
@@ -118,17 +122,45 @@ pro microはデジタルIOピンが14本、デジタルとしても使えるア�
 	* inkscapeは線幅の問題で使えず、外形と内形を色を変えるとかレイヤーを変えるとか言った操作はillustratorがないと難しいというか不可能な作業であった。
 	* 今回５個ほどソフトを試したが、どれも満たせずあきらめてillustratorの7日間仕様版を使った。
 	* 次回はaiやsvgではなくDXFで入稿したい。
-	* elecrow復活してほしい...
+	* elecrow復活してほしい... ← 復活してた
 * データ蹴られるかと思ったがとりあえず通った。
 * DXFもレイヤー分けていればよいらしい。
 
+</details>
+
+<details>
+<summary>作成</summary>
+
+## はんだ付け
+
+[キースイッチを手軽に交換できる Kailh PCBソケット](https://talpkeyboard.stores.jp/items/5e02c5405b120c792616bcf9)
+とダイオードをちまちまつけていく。
+
+ダイオードの向きは今のシルクだと上向きになっているが、
+本当は下向きが良い。
+上向きだと正論理でキースキャンをする形になる。
+それでいいと思っていたが、Pro Microは入力端子の内部抵抗がどうもプルアップにしかできないみたい。
+今回はもうダイオードをつけてしまったのでPro Microの入力端子に10kΩの抵抗をつけてプルダウンした。
+現状のプログラムはプルダウンした回路を前提にしている。
+もし誰か同じものを作りたい人がいたら、回路を修正して内蔵プルアップ抵抗を使う負論理のキースキャンにプログラムを変更する方がよい。
+
+ソケットは向きを考えて穴にはめていく。
+はめた状態だとフットプリントが完全に隠れてしまうので、はんだを適当につけたら問題ない。
+と思いきや、そうでもなくて、フットプリントとソケットが浮いていたりする...
+めちゃもりもりはんだを盛った。
+
+フットプリントを少し大きくした方が良いなとわかった。
+
+## 組み立て
+
+構造は簡単なので特に迷うことはないはず。
+
 ## プログラム作成
 
-qmkでもよいがとりあえず動作確認にarduinoを使う。
-以下を参考にarduino studioで書き込めるか調べる。
-https://learn.sparkfun.com/tutorials/pro-micro--fio-v3-hookup-guide#installing-windows
-https://learn.sparkfun.com/tutorials/pro-micro--fio-v3-hookup-guide/hardware-overview-pro-micro
+プログラムは適当にさっと作った。
+[ここ](https://docs.qmk.fm/#/ja/custom_matrix)を参考にmatrix.cを追加して、matrix.cにシフトレジスタでキースキャンするプログラムを書いた。
 
-![](https://make.kosakalab.com/.blog/wp-content/uploads/2016/07/Pro_Micro.png)
+上にも書いたが現状正論理で書いているので新しく作るときは負論理にしたほうがよい。
 
 
+</details>
